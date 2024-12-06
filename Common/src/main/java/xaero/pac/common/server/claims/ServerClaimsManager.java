@@ -144,21 +144,30 @@ public final class ServerClaimsManager extends ClaimsManager<ServerPlayerClaimIn
 	}
 
 	private ClaimResult<PlayerChunkClaim> tryToClaimHelper(ResourceLocation dimension, UUID playerId, int subConfigIndex, int fromX, int fromZ, int x, int z, boolean forceLoaded, boolean replace, boolean isServer) {
+		// Get the current claim state of the chunk trying to be claimed
 		PlayerChunkClaim currentClaim = get(dimension, x, z);
 		boolean claimCountUnaffected = false;
-		if(currentClaim != null) {
-			claimCountUnaffected = Objects.equals(currentClaim.getPlayerId(), playerId);
-			if(!replace && !claimCountUnaffected)
+
+		// If statement to check if the area is already claimed
+		if(currentClaim != null && !currentClaim.isExpired()) { // If a claim exists in the area [and is not expired]
+			claimCountUnaffected = Objects.equals(currentClaim.getPlayerId(), playerId); // Check if the chunk is already claimed by the person trying to claim it
+			if(!replace && !claimCountUnaffected) // if you're not in replace mode and the claim is not your claim
 				return new ClaimResult<>(currentClaim, ClaimResult.Type.ALREADY_CLAIMED);
 		}
+
 		ServerPlayerClaimInfo playerClaimInfo = getPlayerInfo(playerId);
+		
 		boolean withinLimit = claimCountUnaffected || isServer ||
 				playerClaimInfo.getClaimCount() < getPlayerBaseClaimLimit(playerId) + configManager.getLoadedConfig(playerId).getEffective(PlayerConfigOptions.BONUS_CHUNK_CLAIMS);
+
 		if(withinLimit) {
 			PlayerChunkClaim claim = new PlayerChunkClaim(playerId, subConfigIndex, forceLoaded, 0);
-			if(Objects.equals(claim, currentClaim))
+
+			if(Objects.equals(claim, currentClaim)) // If the new claim is identical to the already existing claim
 				return new ClaimResult<>(currentClaim, ClaimResult.Type.ALREADY_CLAIMED);
+
 			PlayerChunkClaim c = claim(dimension, claim.getPlayerId(), subConfigIndex, x, z, claim.isForceloadable());
+
 			return new ClaimResult<>(c, Objects.equals(c, claim) ? ClaimResult.Type.SUCCESSFUL_CLAIM : ClaimResult.Type.CLAIM_LIMIT_REACHED);//forceload limit
 		} else {
 			return new ClaimResult<>(currentClaim, ClaimResult.Type.CLAIM_LIMIT_REACHED);
@@ -338,7 +347,6 @@ public final class ServerClaimsManager extends ClaimsManager<ServerPlayerClaimIn
 	public PlayerChunkClaim get(@Nonnull ResourceLocation dimension, int x, int z) {
 		PlayerChunkClaim actualClaim = super.get(dimension, x, z);
 		//allowExistingClaimsInUnclaimableDimensions is applied here, not when loading the files, so that new changes to claims still affect the "ignored" claims, e.g. when a server claims a chunk claimed by player
-		if(actualClaim == null || ServerConfig.CONFIG.allowExistingClaimsInUnclaimableDimensions.get() || Objects.equals(actualClaim.getPlayerId(), PlayerConfig.SERVER_CLAIM_UUID) || Objects.equals(actualClaim.getPlayerId(), PlayerConfig.EXPIRED_CLAIM_UUID) || isClaimable(dimension))
 			return actualClaim;
 		else
 			return null;

@@ -42,6 +42,11 @@ public class PlayerChunkClaim implements IPlayerChunkClaim {
 	public boolean isForceloadable() {
 		return forceloadable;
 	}
+
+	public boolean isExpired() {
+		UUID expiredUUID = new UUID(0, 1);
+		return expiredUUID.equals(playerId);
+	}
 	
 	public static long getLongCoordinatesFor(int x, int z) {
 		return ((long) x << 32) | (z & 0xFFFFFFFFL);
